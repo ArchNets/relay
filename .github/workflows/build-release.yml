@@ -1,0 +1,139 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: 'Publish GitHub Release for current version'
+        required: false
+        default: false
+        type: boolean
+      tag_name:
+        description: 'Release Tag (default: v0.1.0)'
+        required: false
+        default: 'v0.1.0'
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+          cache: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run Go Unit Tests
+        run: |
+          export GOTELEMETRY=off GOTOOLCHAIN=local CGO_ENABLED=0 GOPROXY=off GOSUMDB=off
+          go test -mod=vendor -v ./...
+
+      - name: Run Manager Tests
+        run: |
+          PYTHONDONTWRITEBYTECODE=1 python3 -B scripts/test-manager.py
+
+  build:
+    name: Build & Package Binaries
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+          cache: false
+
+      - name: Compile Netrix Core (amd64 and arm64)
+        run: |
+          mkdir -p dist/amd64 dist/arm64
+          export GOTELEMETRY=off GOTOOLCHAIN=local CGO_ENABLED=0 GOPROXY=off GOSUMDB=off
+          
+          # Linux amd64
+          GOOS=linux GOARCH=amd64 go build -mod=vendor -trimpath -buildvcs=false -ldflags='-s -w' -o dist/amd64/netrix ./cmd/netrix
+          chmod +x dist/amd64/netrix
+          
+          # Linux arm64
+          GOOS=linux GOARCH=arm64 go build -mod=vendor -trimpath -buildvcs=false -ldflags='-s -w' -o dist/arm64/netrix ./cmd/netrix
+          chmod +x dist/arm64/netrix
+
+      - name: Package Release Archives
+        run: |
+          mkdir -p release-assets
+
+          for ARCH in amd64 arm64; do
+            PKG_DIR="pkg-${ARCH}/relay"
+            mkdir -p "${PKG_DIR}/scripts" "${PKG_DIR}/docs"
+            
+            cp "dist/${ARCH}/netrix" "${PKG_DIR}/"
+            cp -r scripts/* "${PKG_DIR}/scripts/"
+            cp -r docs/* "${PKG_DIR}/docs/"
+            [ -d guides ] && cp -r guides "${PKG_DIR}/"
+            cp README.md LICENSE "${PKG_DIR}/"
+            
+            BIN_HASH=$(sha256sum "dist/${ARCH}/netrix" | awk '{print $1}')
+            
+            # Create self-contained install script inside bundle
+            cat << EOF > "${PKG_DIR}/install.sh"
+#!/bin/sh
+set -eu
+dir=\$(CDPATH= cd -- "\$(dirname -- "\$0")" && pwd)
+exec python3 "\$dir/scripts/netrix-manager.py" install --binary "\$dir/netrix" --sha256 "${BIN_HASH}" "\$@"
+EOF
+            chmod +x "${PKG_DIR}/install.sh" "${PKG_DIR}/scripts/"*
+
+            tar -czf "release-assets/relay-linux-${ARCH}.tar.gz" -C "pkg-${ARCH}" relay
+          done
+
+          cd release-assets
+          sha256sum relay-linux-*.tar.gz > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: relay-release-packages
+          path: release-assets/
+
+      - name: Determine Release Eligibility
+        id: release_check
+        run: |
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "tag=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.publish_release }}" == "true" ]]; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "tag=${{ github.event.inputs.tag_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "should_release=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Publish GitHub Release
+        if: steps.release_check.outputs.should_release == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_check.outputs.tag }}
+          files: release-assets/*
+          name: Release ${{ steps.release_check.outputs.tag }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false

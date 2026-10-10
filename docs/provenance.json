@@ -1,0 +1,34 @@
+{
+  "attribution": "https://t.me/ir_spoof",
+  "repository": "https://github.com/Karrari-Dev/Netrix-",
+  "commit": "3da9e0ae8156f7cf7c4591a634335271bb147985",
+  "release_tag": "v3.0.1",
+  "release_published_at": "2025-11-28T15:37:02Z",
+  "downloaded_without_execution": true,
+  "inputs": [
+    {
+      "file": "README.md",
+      "bytes": 31552,
+      "sha256": "edd5fd85ae949e1dbfbf86d3ae60e91ca52e92a32f18ce7067da3883fcb2e5df",
+      "url": "https://raw.githubusercontent.com/Karrari-Dev/Netrix-/3da9e0ae8156f7cf7c4591a634335271bb147985/README.md"
+    },
+    {
+      "file": "netrix-manager.py",
+      "bytes": 245166,
+      "sha256": "1dab76bebd0c3dc606058a304a143a2601ad3ac4a033b1d8918ab199113afe14",
+      "url": "https://raw.githubusercontent.com/Karrari-Dev/Netrix-/3da9e0ae8156f7cf7c4591a634335271bb147985/netrix-manager.py"
+    },
+    {
+      "file": "netrix-amd64.tar.gz",
+      "bytes": 5773400,
+      "sha256": "295608bde54f057d4122ae9d101d3cb1351a2b3ddc24209d6f09e76f9538e75b",
+      "url": "https://github.com/Karrari-Dev/Netrix-/releases/download/v3.0.1/netrix-amd64.tar.gz",
+      "publisher_digest": "sha256:295608bde54f057d4122ae9d101d3cb1351a2b3ddc24209d6f09e76f9538e75b"
+    },
+    {
+      "file": "netrix-original",
+      "bytes": 5773572,
+      "sha256": "ce821625a8652678d70f4cf5648eb12e5e1ddabba1ecabd54df02104a67cea32"
+    }
+  ]
+}

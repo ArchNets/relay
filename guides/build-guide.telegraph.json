@@ -1,0 +1,285 @@
+{
+  "title": "ساخت و نصب Netrix از سورس با Go و ir_spoof",
+  "author_name": "ir_spoof",
+  "author_url": "https://t.me/ir_spoof",
+  "content": [
+    {
+      "tag": "p",
+      "children": [
+        "می‌خوای به‌جای فایل آماده، خودت هسته رو از سورس بسازی؟ این راهنما از باز کردن ZIP شروع می‌شه و تا نصب همون خروجی روی سرور می‌ره. پروژه Netrix · ir_spoof نسخه 0.1.0 با Go نوشته شده؛ مدیر سرویس‌ها هم Pythonه. این بازسازی مستقلِ عملکرد برنامه‌ست، نه سورس اصلی و نه فایل اجرایی بایت‌به‌بایت یکسان."
+      ]
+    },
+    {
+      "tag": "h3",
+      "children": [
+        "چی لازم داری"
+      ]
+    },
+    {
+      "tag": "ul",
+      "children": [
+        {
+          "tag": "li",
+          "children": [
+            "یک لینوکس amd64 با glibc؛ مثل Ubuntu یا Debian. فایل آماده این بسته مخصوص amd64ه و روی Alpine/musl به‌تنهایی اجرا نمی‌شه."
+          ]
+        },
+        {
+          "tag": "li",
+          "children": [
+            "Go نسخه 1.26 یا جدیدتر، از قبل نصب‌شده. تست ساخت آفلاین این انتشار با Go 1.27.2 انجام شده."
+          ]
+        },
+        {
+          "tag": "li",
+          "children": [
+            "Python 3.10 یا جدیدتر و systemd برای نصب و مدیریت سرویس‌ها."
+          ]
+        },
+        {
+          "tag": "li",
+          "children": [
+            "ابزارهای unzip، tar و sha256sum برای باز کردن بسته و بررسی فایل‌ها. برای TUN هم iproute2 لازمه."
+          ]
+        },
+        {
+          "tag": "li",
+          "children": [
+            "ساخت و تست معمولی با کاربر عادی انجام می‌شه؛ فقط مرحله نصب و مدیریت سرویس‌ها sudo می‌خواد."
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "pre",
+      "children": [
+        {
+          "tag": "code",
+          "children": [
+            "uname -m\ngo version\npython3 --version\ncommand -v unzip tar sha256sum ip\nsystemctl --version"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "p",
+      "children": [
+        "روی amd64، خروجی uname -m باید x86_64 باشه. اگر Go یا ابزارهای سیستم نصب نیست، اول با روش رسمی یا مدیر بسته لینوکست نصبشون کن. آفلاین بودن ساخت یعنی بعد از آماده بودن این ابزارها، وابستگی‌های Go از پوشه vendor همین سورس خونده می‌شن؛ نصب اولیه ابزارها ممکنه اینترنت بخواد."
+      ]
+    },
+    {
+      "tag": "h3",
+      "children": [
+        "ZIP کامل و بعد سورس رو باز کن"
+      ]
+    },
+    {
+      "tag": "p",
+      "children": [
+        "فایل netrix-ir_spoof-complete-linux-amd64-0.1.0.zip رو روی لینوکس بذار و از همون پوشه این دستورها رو بزن. اسم فایل‌ها رو تغییر نده تا مسیرهای این راهنما دقیقاً جور دربیان."
+      ]
+    },
+    {
+      "tag": "pre",
+      "children": [
+        {
+          "tag": "code",
+          "children": [
+            "unzip netrix-ir_spoof-complete-linux-amd64-0.1.0.zip\ncd netrix-ir_spoof-0.1.0\nsha256sum -c SHA256SUMS\nunzip netrix-ir_spoof-source-0.1.0.zip\ncd netrix-ir_spoof-source-0.1.0"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "p",
+      "children": [
+        "برای همه فایل‌های فهرست‌شده باید OK ببینی. اگر FAILED دیدی، همون‌جا متوقف شو و فایل سالم رو دوباره بگیر. checksum جلوی خرابی یا تغییر فایل نسبت به فهرست رو می‌گیره؛ اعتماد به اصالت بسته هنوز به این بستگی داره که خود بسته و فهرست رو از جای مورد اعتماد گرفته باشی. اگر فقط ZIP سورس رو داری، همون رو باز کن و مستقیم وارد پوشه netrix-ir_spoof-source-0.1.0 شو. نسخه tar.gz سورس هم داخل بسته هست و می‌تونی به‌جای ZIP از اون استفاده کنی."
+      ]
+    },
+    {
+      "tag": "h3",
+      "children": [
+        "هسته رو بساز؛ بدون دانلود وابستگی"
+      ]
+    },
+    {
+      "tag": "p",
+      "children": [
+        "از ریشه سورس اجرا کن. این تنظیمات دانلود ماژول و دانلود خودکار toolchain رو خاموش می‌کنن. trimpath مسیرهای محلی ساخت رو از خروجی حذف می‌کنه و buildvcs=false مانع ثبت اطلاعات کنترل نسخه در فایل اجرایی می‌شه. خروجی قابل انتشار با نام build/netrix ساخته می‌شه."
+      ]
+    },
+    {
+      "tag": "pre",
+      "children": [
+        {
+          "tag": "code",
+          "children": [
+            "export GOTELEMETRY=off GOTOOLCHAIN=local GOPROXY=off GOSUMDB=off CGO_ENABLED=0\nmkdir -p build\ngo build -mod=vendor -trimpath -buildvcs=false -ldflags='-s -w' -o build/netrix ./cmd/netrix\n./build/netrix -version\nsha256sum build/netrix"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "p",
+      "children": [
+        "نسخه خروجی باید نام ir_spoof رو داشته باشه. اگر دوست داری همین کار کوتاه‌تر انجام بشه، به‌جای دستورهای ساخت بالا، از ریشه سورس sh scripts/build.sh رو اجرا کن؛ همون تنظیمات ساخت رو اعمال می‌کنه، نسخه رو چاپ می‌کنه و checksum می‌ده. هیچ‌کدوم رو با sudo اجرا نکن."
+      ]
+    },
+    {
+      "tag": "pre",
+      "children": [
+        {
+          "tag": "code",
+          "children": [
+            "sh scripts/build.sh"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "p",
+      "children": [
+        "نکته فنی کوتاه: CGO_ENABLED=0 این برنامه رو کاملاً استاتیک نمی‌کنه. بخش purego از loader سیستم استفاده می‌کنه؛ خروجی هنوز به loader استاندارد ELF و کتابخانه‌های glibc مثل libc، libpthread و libdl نیاز داره. نبودن gcc برای این دستور ساخت مشکلی نیست، ولی لینوکس مناسب برای اجرا لازمه."
+      ]
+    },
+    {
+      "tag": "h3",
+      "children": [
+        "قبل از نصب، تست‌ها رو اجرا کن"
+      ]
+    },
+    {
+      "tag": "pre",
+      "children": [
+        {
+          "tag": "code",
+          "children": [
+            "go test -mod=vendor ./...\nPYTHONDONTWRITEBYTECODE=1 python3 -B scripts/test-manager.py"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "p",
+      "children": [
+        "تست‌های Go و مدیر سرویس باید موفق باشن. بعضی تست‌های TUN به دسترسی‌های ویژه لینوکس نیاز دارن و با کاربر عادی ممکنه SKIP بشن؛ SKIP یعنی اون بخش این بار اجرا نشده. برای رد کردن این مرحله کل ساخت یا همه تست‌ها رو sudo نکن. تست واقعی ارتباط بین دو سرور، جای خودش رو داره و در راهنمای تونل انجامش می‌دیم."
+      ]
+    },
+    {
+      "tag": "h3",
+      "children": [
+        "همین خروجی رو نصب کن"
+      ]
+    },
+    {
+      "tag": "p",
+      "children": [
+        "حالا installer محلی رو با فایل ساخته‌شده و SHA-256 خودش اجرا کن. این هش، همون خروجی‌ای رو که ساختی برای نصب مشخص می‌کنه؛ لازم نیست با هش باینری آماده یکی باشه، چون نسخه Go و محیط ساخت می‌تونن فرق کنن. این نصب هیچ هسته‌ای رو از سایت سازنده دانلود نمی‌کنه."
+      ]
+    },
+    {
+      "tag": "pre",
+      "children": [
+        {
+          "tag": "code",
+          "children": [
+            "sudo sh scripts/install.sh --binary build/netrix --sha256 \"$(sha256sum build/netrix | cut -d' ' -f1)\"\nnetrix -version\nsudo netrix-manager"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "p",
+      "children": [
+        "هسته در /usr/local/bin/netrix نصب می‌شه و netrix-manager منوی ساخت و مدیریت تونل رو باز می‌کنه. اگر فایل ناشناسِ قدیمی با همین اسم روی سرور باشه، installer خودکار جاش رو نمی‌گیره. جایگزینی نصب قدیمی فقط با گزینه‌های مهاجرت و هش دقیق فایل قبلی انجام می‌شه؛ توضیحش در docs/manager.md هست. برای یک شروع تمیز، از VM یا سرور آزمایشی جدا استفاده کن."
+      ]
+    },
+    {
+      "tag": "h3",
+      "children": [
+        "از ساخت هسته تا تونل واقعی"
+      ]
+    },
+    {
+      "tag": "p",
+      "children": [
+        "نصب به‌تنهایی تونل نمی‌سازه. همین نسخه رو روی سرور دوم هم نصب کن، بعد نقش server و client، آدرس همتا، پورت و نگاشت سرویس رو با راهنمای زیر تنظیم کن. منوی مدیر سرویس می‌تونه فایل تنظیمات و سرویس systemd رو بسازه و روشن کنه."
+      ]
+    },
+    {
+      "tag": "p",
+      "children": [
+        "راهنمای راه‌اندازی تونل بین دو سرور: ",
+        {
+          "tag": "a",
+          "attrs": {
+            "href": "https://telegra.ph/نصب-Netrix-و-ساخت-تونل-بین-دو-سرور-با-ir-spoof-10-09"
+          },
+          "children": [
+            "https://telegra.ph/نصب-Netrix-و-ساخت-تونل-بین-دو-سرور-با-ir-spoof-10-09"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "pre",
+      "children": [
+        {
+          "tag": "code",
+          "children": [
+            "sudo netrix-manager status\nsudo netrix-manager restart demo\nsudo netrix-manager stop demo\nsudo netrix-manager start demo"
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "p",
+      "children": [
+        "demo رو با اسم تونلی که خودت ساختی عوض کن. برای دستورهای بیشتر docs/manager.md رو بخون؛ README.md هم ساخت و نصب رو توضیح می‌ده. جزئیات هسته در docs/core.md و docs/wire-format.md هست. docs/test-report.md گزارش تست این نسخه و docs/limits.md تفاوت‌ها و محدودیت‌های ثبت‌شده رو داره."
+      ]
+    },
+    {
+      "tag": "h3",
+      "children": [
+        "حریم خصوصی و اعتبار پروژه"
+      ]
+    },
+    {
+      "tag": "p",
+      "children": [
+        "هسته و مدیر این نسخه، کلاینت لایسنس، جست‌وجوی IP عمومی، telemetry، analytics یا آپدیت خودکار ندارن. اتصال عادی فقط به همتا و مقصدهایی انجام می‌شه که خودت تنظیم می‌کنی؛ hostname هم طبیعتاً DNS می‌خواد. اگر PSK محلی بذاری، فقط برای احراز هویت بین سرورهای خودته و شناسه ثبت‌نام یا ابزار ردیابی نیست؛ برای مخفی موندن اون روی شبکه، رمزنگاری یا TLS رو روشن نگه دار."
+      ]
+    },
+    {
+      "tag": "p",
+      "children": [
+        "انتشار مستقل و بازسازی: ir_spoof — ",
+        {
+          "tag": "a",
+          "attrs": {
+            "href": "https://t.me/ir_spoof."
+          },
+          "children": [
+            "https://t.me/ir_spoof."
+          ]
+        },
+        " اعتبار و لایسنس وابستگی‌ها داخل سورس و بسته حفظ شده. این نسخه شامل باینری اصلی تجاری یا سورس اختصاصی اون نیست؛ ادعای یکسان بودن کامل رفتار و بایت‌ها هم نداره."
+      ]
+    },
+    {
+      "tag": "p",
+      "children": [
+        "راهنمای نصب و ساخت تونل: ",
+        {
+          "tag": "a",
+          "attrs": {
+            "href": "https://telegra.ph/نصب-Netrix-و-ساخت-تونل-بین-دو-سرور-با-ir-spoof-10-09"
+          },
+          "children": [
+            "https://telegra.ph/نصب-Netrix-و-ساخت-تونل-بین-دو-سرور-با-ir-spoof-10-09"
+          ]
+        }
+      ]
+    }
+  ]
+}

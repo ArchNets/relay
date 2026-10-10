@@ -1,0 +1,22 @@
+# Independent Linux reconstruction by t.me/ir_spoof.
+/build/
+/dist/
+/bin/
+/work/
+/release-assets/
+/pkg-*/
+/manager-simulation/
+*.tar.gz
+*.zip
+*.run
+__pycache__/
+*.py[cod]
+*.pcap
+*.key
+*.pem
+*.log
+server.json
+client.json
+*.qcow2
+
+

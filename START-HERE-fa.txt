@@ -1,0 +1,15 @@
+بسته کامل Netrix ir_spoof نسخه 0.1.0 برای لینوکس amd64
+
+راهنمای نصب و ساخت تونل:
+https://telegra.ph/نصب-Netrix-و-ساخت-تونل-بین-دو-سرور-با-ir-spoof-10-09
+
+راهنمای ساخت از سورس:
+https://telegra.ph/ساخت-و-نصب-Netrix-از-سورس-با-Go-و-ir-spoof-10-09
+
+بعد از باز کردن ZIP، داخل پوشه netrix-ir_spoof-0.1.0 اجرا کن:
+sha256sum -c SHA256SUMS
+sudo sh netrix-ir_spoof-linux-amd64-0.1.0.run
+
+فایل آماده، installer آفلاین، آرشیو runtime، سورس ZIP و tar.gz، گزارش تست و راهنماها داخل بسته هستند. سورس و runtime را از آرشیو خودشان باز کن. فایل‌های HTML و متن راهنماها در guides برای انتشار دوباره آماده‌اند.
+
+این بازسازی مستقل Go است، نه فایل بایت‌به‌بایت اصلی. پیش‌نیازها: glibc Linux x86_64، Python 3.10+، systemd و iproute2. Go 1.26+ فقط برای ساخت سورس لازم است. اعتبار پروژه: https://t.me/ir_spoof

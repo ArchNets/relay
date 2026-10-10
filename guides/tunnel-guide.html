@@ -1,0 +1,80 @@
+<!doctype html><html lang="fa" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>نصب Netrix و ساخت تونل بین دو سرور با ir_spoof</title><style>body{font-family:Tahoma,Arial,sans-serif;background:#f7f9fc;color:#15233b;line-height:2;margin:0}main{max-width:820px;margin:30px auto;background:white;border-radius:16px;padding:32px}h1{font-size:26px}h3{font-size:20px;margin-top:32px}pre{direction:ltr;text-align:left;white-space:pre;overflow:auto;background:#15233b;color:#edf4ff;border-radius:10px;padding:18px;font-size:14px;line-height:1.6}a{color:#1767bd}code{font-family:Consolas,monospace}@media(max-width:600px){main{margin:0;padding:18px;border-radius:0}}</style><main><h1>نصب Netrix و ساخت تونل بین دو سرور با ir_spoof</h1><p><a href="https://t.me/ir_spoof">ir_spoof</a></p><p>با این راهنما نسخه مستقل Netrix 0.1.0 از ir_spoof رو روی دو سرور لینوکسی نصب می‌کنیم و یک تونل TCP و UDP راه می‌اندازیم. سرور A پورت‌ها رو می‌گیره و سرور B از داخل تونل به سرویس‌های خودش وصل می‌شه. برای شروع، tcpmux انتخاب ساده‌ایه؛ هر دو نوع ترافیک TCP و UDP داخل ارتباط TCP بین دو سرور منتقل می‌شن.</p><h3>قبل از شروع</h3><ul><li>دو سرور تحت کنترل خودت، با لینوکس amd64 و glibc؛ مثل نصب معمول Ubuntu یا Debian. این باندل برای Alpine با musl نیست.</li><li>Python 3.10 یا جدیدتر، systemd و iproute2 روی هر دو سرور. برای باز کردن ZIP هم unzip لازم داریم؛ curl فقط برای تست HTTP پایین استفاده می‌شه.</li><li>دسترسی sudo و یک روش امن برای جابه‌جا کردن فایل محرمانه بین دو سرور، مثل SSH یا SFTP خودت.</li><li>روی سرور A، پورت TCP 4000 باید از سرور B قابل دسترسی باشه. اگر فایروال داری، همین دسترسی رو با ابزار همیشگی خودت بده. برای tcpmux لازم نیست پورت UDP 4000 رو باز کنی.</li><li>پورت‌های 18080 و 18081 روی A و 8080 و 8081 روی B باید برای این مثال آزاد باشن. SERVER_A_IP یعنی آدرس واقعی سرور A؛ این عبارت رو همون‌طور کپی نکن.</li></ul><h3>نصب روی هر دو سرور</h3><p>فایل netrix-ir_spoof-complete-linux-amd64-0.1.0.zip رو روی هر دو سرور بفرست. روی هر سرور، از پوشه‌ای که فایل ZIP داخلشه این‌ها رو اجرا کن:</p><pre><code>unzip netrix-ir_spoof-complete-linux-amd64-0.1.0.zip
+cd netrix-ir_spoof-0.1.0
+sha256sum -c SHA256SUMS
+sudo sh netrix-ir_spoof-linux-amd64-0.1.0.run</code></pre><p>بررسی SHA256 باید بدون خطا تموم بشه. نصب‌کننده فایل‌های داخل همین باندل رو بررسی می‌کنه و چیزی از سایت سازنده دانلود نمی‌کنه. بعد از نصب، اگر منو باز شد، گزینه 0 رو بزن تا خارج بشی؛ ادامه آموزش با دستورهای مشخصه. فایل SHA256SUMS سالم بودن فایل‌ها نسبت به همین بسته رو بررسی می‌کنه؛ اعتبار کسی که بسته رو ازش گرفتی رو به‌تنهایی ثابت نمی‌کنه.</p><pre><code>netrix -version
+python3 --version</code></pre><h3>روی A یک کلید خصوصی بساز</h3><p>فقط روی A این دستور رو اجرا کن. یک کلید تصادفی محلی ساخته می‌شه؛ محتوای کلید توی خروجی چاپ نمی‌شه:</p><pre><code>sudo netrix-manager secret demo
+sudo stat -c &#x27;%a %U %G&#x27; /etc/netrix/secrets/demo.psk</code></pre><p>قبل از انتقال فایل، روی B پوشه کلیدها رو با دسترسی محدود بساز:</p><pre><code>sudo install -d -m 700 -o root -g root /etc/netrix/secrets</code></pre><p>خروجی دستور دوم باید 600 root root باشه. فایل /etc/netrix/secrets/demo.psk رو با اتصال SSH یا SFTP خصوصی و دسترسی مدیریتی خودت به همین مسیر روی B منتقل کن. کلید رو توی تلگرام، پیام عمومی، اسکرین‌شات یا خط فرمان paste نکن. فایل روی A فقط برای root قابل خوندنه؛ با یک کاربر معمولی، کپی مستقیمش بدون دسترسی مدیریتی انجام نمی‌شه. اگر مسیر SSH خودت اجازه ورود root نمی‌ده، انتقال رو با روش مدیریتی امن خودت انجام بده؛ نیازی نیست ورود SSH با root رو صرفاً برای این آموزش فعال کنی.</p><p>بعد از انتقال، روی B مالک و سطح دسترسی رو تنظیم کن و چک کن:</p><pre><code>sudo chown root:root /etc/netrix/secrets/demo.psk
+sudo chmod 600 /etc/netrix/secrets/demo.psk
+sudo chmod 700 /etc/netrix/secrets
+sudo stat -c &#x27;%a %U %G&#x27; /etc/netrix/secrets/demo.psk</code></pre><p>روی B دوباره secret demo رو اجرا نکن؛ هر دو طرف باید دقیقاً یک کلید داشته باشن. این PSK فقط برای احراز هویت و رمزنگاری بین سرورهای خودته و هیچ ربطی به لایسنس تجاری یا ثبت IP در سایت سازنده نداره. با --psk-file، مدیر به‌صورت پیش‌فرض رمزنگاری ChaCha20-Poly1305 رو فعال می‌کنه.</p><h3>تونل سرور A رو بساز</h3><p>روی A اجرا کن. پورت TCP 18080 این سرور به TCP 8080 روی B می‌رسه و UDP 18081 به UDP 8081 روی B:</p><pre><code>sudo netrix-manager create demo --mode server --transport tcpmux \
+  --listen 0.0.0.0:4000 --pool 1 \
+  --psk-file /etc/netrix/secrets/demo.psk \
+  --tcp-ports &#x27;127.0.0.1:18080=127.0.0.1:8080&#x27; \
+  --udp-ports &#x27;127.0.0.1:18081=127.0.0.1:8081&#x27; \
+  --health-port 19080 --start</code></pre><p>آدرس سمت چپ هر mapping روی A باز می‌شه؛ آدرس سمت راست رو B به‌عنوان مقصد می‌بینه. پس 127.0.0.1:8080 یعنی سرویس محلی روی B، نه A. سرویس با اسم netrix-demo.service ساخته، شروع و برای بوت بعدی فعال می‌شه. تا وقتی B وصل نشده، داشتن سرویس فعال روی A به‌تنهایی یعنی تونل آماده نیست.</p><h3>تونل سرور B رو وصل کن</h3><p>روی B، SERVER_A_IP رو با IP واقعی A عوض کن و دستور رو اجرا کن:</p><pre><code>sudo netrix-manager create demo --mode client --transport tcpmux \
+  --peer SERVER_A_IP:4000 --pool 1 \
+  --psk-file /etc/netrix/secrets/demo.psk \
+  --health-port 19080 --start</code></pre><p>اینجا B اتصال رو به A شروع می‌کنه. روی B mapping اضافه نمی‌کنیم؛ mappingها روی A تعریف شدن و سرویس‌های مقصد روی B هستن. پورت health روی هر سرور فقط روی loopback در دسترسه. چون اینجا دو سرور جدا داریم، یکسان بودن health_port مشکلی نداره.</p><h3>وضعیت هر دو طرف رو ببین</h3><p>روی هر دو سرور اجرا کن:</p><pre><code>sudo netrix-manager status demo
+sudo netrix-manager health demo
+systemctl status netrix-demo.service --no-pager</code></pre><p>برای دیدن خطای محلی سرویس، journalctl -u netrix-demo.service -n 50 --no-pager رو اجرا کن. اگر وصل نشد، اول IP و TCP 4000، یکسان بودن کلید، در دسترس بودن A از B و آزاد بودن پورت‌ها رو بررسی کن. لاگ و تنظیمات واقعی خودت رو بی‌دلیل عمومی نکن؛ خطای محلی ممکنه اطلاعاتی از تنظیمات اتصال داشته باشه.</p><h3>TCP رو با یک سرویس آزمایشی چک کن</h3><p>تونل خودش وب‌سرور یا سرویس مقصد نمی‌سازه. اگر روی B از قبل سرویس HTTP روی 127.0.0.1:8080 داری، همون رو تست کن. وگرنه روی B یک ترمینال جدا باز کن و این نمونه موقت رو با کاربر معمولی اجرا کن. فقط پوشه آزمایشی زیر سرو می‌شه، نه فایل‌های شخصی یا پوشه home:</p><pre><code>mkdir -p /tmp/netrix-http-demo
+printf &#x27;Netrix ir_spoof tunnel OK\n&#x27; &gt; /tmp/netrix-http-demo/index.html
+python3 -m http.server 8080 --bind 127.0.0.1 --directory /tmp/netrix-http-demo</code></pre><p>این ترمینال رو باز نگه دار. حالا روی A اجرا کن:</p><pre><code>curl --noproxy &#x27;*&#x27; --fail --max-time 10 http://127.0.0.1:18080/</code></pre><p>اگر Netrix ir_spoof tunnel OK دیدی، درخواست از A وارد تونل شده، به وب‌سرور محلی B رسیده و پاسخ برگشته. این فقط تست TCP/HTTP بود؛ UDP رو جدا تست می‌کنیم.</p><h3>UDP رو هم جدا تست کن</h3><p>روی B، یک ترمینال جدا برای این UDP echo آزمایشی باز کن. اگر خودت سرویس UDP روی 8081 داری، این نمونه رو هم‌زمان روی همان پورت اجرا نکن:</p><pre><code>python3 - &lt;&lt;&#x27;PY&#x27;
+import socket
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+s.bind((&#x27;127.0.0.1&#x27;, 8081))
+print(&#x27;UDP echo ready on 127.0.0.1:8081&#x27;, flush=True)
+while True:
+    data, peer = s.recvfrom(65507)
+    s.sendto(data, peer)
+PY</code></pre><p>روی A این بسته رو بفرست و پاسخ دقیقش رو چک کن:</p><pre><code>python3 - &lt;&lt;&#x27;PY&#x27;
+import socket
+message = b&#x27;Netrix ir_spoof UDP OK&#x27;
+with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+    s.settimeout(10)
+    s.sendto(message, (&#x27;127.0.0.1&#x27;, 18081))
+    reply, _ = s.recvfrom(65507)
+    assert reply == message, &#x27;Unexpected UDP reply&#x27;
+    print(reply.decode(&#x27;ascii&#x27;))
+PY</code></pre><p>با دیدن Netrix ir_spoof UDP OK، مسیر UDP هم رفت‌وبرگشت شده. برای توقف سرویس‌های آزمایشی Python، داخل هر ترمینال B کلید Ctrl+C رو بزن. این نمونه‌ها فقط برای تستن؛ برای استفاده واقعی، سرویس اصلی خودت رو پشت تونل بذار.</p><h3>تنظیمات کامل این مثال چه شکلیه</h3><p>دستورهای بالا تنظیمات رو در /etc/netrix/demo.yaml با دسترسی 0600 ذخیره می‌کنن. قالب زیر یک مثال کامل JSON با همان رفتار است. LOCAL_PSK فقط جای‌نگهداره، نه کلیدی که باید واقعاً استفاده کنی. SERVER_A_IP هم باید عوض بشه. برای مسیر اصلی همین راهنما از --psk-file استفاده کن تا کلید رو در فرمان یا صفحه چاپ نکنی.</p><p>پیکربندی A:</p><pre><code>{
+  &quot;mode&quot;: &quot;server&quot;,
+  &quot;profile&quot;: &quot;balanced&quot;,
+  &quot;transport&quot;: &quot;tcpmux&quot;,
+  &quot;listen&quot;: &quot;0.0.0.0:4000&quot;,
+  &quot;psk&quot;: &quot;LOCAL_PSK&quot;,
+  &quot;encryption&quot;: {
+    &quot;enabled&quot;: true,
+    &quot;algorithm&quot;: &quot;chacha20-poly1305&quot;
+  },
+  &quot;tcp_ports&quot;: [
+    &quot;127.0.0.1:18080=127.0.0.1:8080&quot;
+  ],
+  &quot;udp_ports&quot;: [
+    &quot;127.0.0.1:18081=127.0.0.1:8081&quot;
+  ],
+  &quot;health_port&quot;: 19080,
+  &quot;verbose&quot;: false
+}</code></pre><p>پیکربندی B:</p><pre><code>{
+  &quot;mode&quot;: &quot;client&quot;,
+  &quot;profile&quot;: &quot;balanced&quot;,
+  &quot;transport&quot;: &quot;tcpmux&quot;,
+  &quot;psk&quot;: &quot;LOCAL_PSK&quot;,
+  &quot;encryption&quot;: {
+    &quot;enabled&quot;: true,
+    &quot;algorithm&quot;: &quot;chacha20-poly1305&quot;
+  },
+  &quot;paths&quot;: [
+    {
+      &quot;transport&quot;: &quot;tcpmux&quot;,
+      &quot;addr&quot;: &quot;SERVER_A_IP:4000&quot;,
+      &quot;connection_pool&quot;: 1,
+      &quot;retry_interval&quot;: 3,
+      &quot;dial_timeout&quot;: 10
+    }
+  ],
+  &quot;tcp_ports&quot;: [],
+  &quot;udp_ports&quot;: [],
+  &quot;health_port&quot;: 19080,
+  &quot;verbose&quot;: false
+}</code></pre><p>اگر بعداً می‌خوای JSON شخصی خودت رو وارد کنی، فایل رو با مالک root و دسترسی 0600 نگه دار، LOCAL_PSK رو در یک ویرایشگر امن با کلید واقعی مشترک جایگزین کن و با sudo netrix-manager check config.json بررسیش کن. برای ایجاد یک تونل جدید از sudo netrix-manager create NEW_ID --config config.json --start استفاده کن. نام NEW_ID رو با یک شناسه آزاد مثل demo2 عوض کن؛ فایل محرمانه کانفیگ رو عمومی نکن.</p><h3>مدیریت روزمره</h3><pre><code>sudo netrix-manager stop demo
+sudo netrix-manager start demo
+sudo netrix-manager restart demo</code></pre><p>هر دستور رو وقتی لازم داری اجرا کن، نه اینکه برای هر بار بررسی هر سه رو پشت سر هم بزنی. stop تونل رو متوقف می‌کنه ولی فعال بودنش برای بوت بعدی رو حذف نمی‌کنه. برای حذف کانفیگ و سرویس این تونل، روی هر دو طرف دستور زیر رو اجرا کن؛ فایل کلید جداست و این دستور لزوماً اون رو حذف نمی‌کنه:</p><pre><code>sudo netrix-manager delete demo --yes</code></pre><h3>اگر دسترسی از بیرون A می‌خوای</h3><p>این مثال عمداً پورت‌های forwarding روی A رو فقط به 127.0.0.1 بایند می‌کنه؛ پس یک برنامه روی خود A می‌تونه از تونل استفاده کنه. برای دسترسی کاربرهای بیرونی، باید آدرس bind سمت چپ mapping رو با تصمیم خودت به آدرس مناسب سرور عوض کنی؛ مثلاً 0.0.0.0:18080. بعد دسترسی فایروال و امنیت سرویس مقصد رو هم متناسب با کاربردت تنظیم کن. عوض کردن bind ممکنه سرویس رو عمومی کنه؛ مدیر خودش پورت forwarding یا فایروال عمومی رو برایت باز نمی‌کنه.</p><p>برای تغییر یک تونل موجود، اول stop، سپس create demo --replace همراه با تنظیمات جدید و --start اجرا کن. مدیر فقط تنظیمات و سرویس‌های متعلق به خودش رو تغییر می‌ده و واحدی که بیرون از مدیر ویرایش شده باشه رو بدون بررسی قبول نمی‌کنه.</p><h3>درباره حریم خصوصی و سازگاری</h3><p>این نسخه تماس با سایت سازنده، lookup عمومی IP، لایسنس و کش تجاری، telemetry و به‌روزرسانی خودکار نداره. اتصال به سرور مقابل و backendهایی که خودت مشخص کردی انجام می‌شه. این یعنی حذف تماس‌های اضافه؛ به معنی ناشناس شدن IP برای سرور مقابل یا اینترنت نیست. رمزنگاری محتوا رو محافظت می‌کنه، ولی اطلاعات شبکه مثل IP دو سرور همچنان برای مسیر ارتباط قابل مشاهده‌ست.</p><p>دو طرف این آموزش باید همین نسخه مستقل رو اجرا کنن. حالت پیش‌فرض از کلید تازه برای هر اتصال استفاده می‌کنه. استفاده با core اصلی موضوع جداگانه‌ایه و به حالت compatibility و محدودیت‌های گزارش سازگاری نیاز داره؛ برای TUN در آزمایش تعامل با core اصلی، یک queue پیشنهاد شده. این راهنما ادعای بازنویسی بایت‌به‌بایت یا برابری کامل با همه رفتارهای نسخه اصلی نداره. ۵۸ مورد تونل در محیط محلی لینوکس آزمایش شده؛ نتیجه شبکه واقعی تو به مسیر، فایروال و منابع سرورها هم بستگی داره.</p><p>سورس، گزارش تست، checksum و توضیح محدودیت‌ها داخل باندل هست. بازنویسی مستقل و این راهنما: ir_spoof — <a href="https://t.me/ir_spoof">https://t.me/ir_spoof</a></p><p>راهنمای ساخت از سورس: <a href="https://telegra.ph/ساخت-و-نصب-Netrix-از-سورس-با-Go-و-ir-spoof-10-09">https://telegra.ph/ساخت-و-نصب-Netrix-از-سورس-با-Go-و-ir-spoof-10-09</a></p></main></html>

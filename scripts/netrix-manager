@@ -1,0 +1,5 @@
+#!/bin/sh
+# Independently rewritten offline manager by ir_spoof — t.me/ir_spoof
+set -eu
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+exec python3 "$script_dir/netrix-manager.py" "$@"
