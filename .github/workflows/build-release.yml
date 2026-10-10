@@ -78,35 +78,7 @@ jobs:
 
       - name: Package Release Archives
         run: |
-          mkdir -p release-assets
-
-          for ARCH in amd64 arm64; do
-            PKG_DIR="pkg-${ARCH}/relay"
-            mkdir -p "${PKG_DIR}/scripts" "${PKG_DIR}/docs"
-            
-            cp "dist/${ARCH}/netrix" "${PKG_DIR}/"
-            cp -r scripts/* "${PKG_DIR}/scripts/"
-            cp -r docs/* "${PKG_DIR}/docs/"
-            [ -d guides ] && cp -r guides "${PKG_DIR}/"
-            cp README.md LICENSE "${PKG_DIR}/"
-            
-            BIN_HASH=$(sha256sum "dist/${ARCH}/netrix" | awk '{print $1}')
-            
-            # Create self-contained install script inside bundle
-            cat << EOF > "${PKG_DIR}/install.sh"
-#!/bin/sh
-set -eu
-dir=\$(CDPATH= cd -- "\$(dirname -- "\$0")" && pwd)
-exec python3 "\$dir/scripts/netrix-manager.py" install --binary "\$dir/netrix" --sha256 "${BIN_HASH}" "\$@"
-EOF
-            chmod +x "${PKG_DIR}/install.sh" "${PKG_DIR}/scripts/"*
-
-            tar -czf "release-assets/relay-linux-${ARCH}.tar.gz" -C "pkg-${ARCH}" relay
-          done
-
-          cd release-assets
-          sha256sum relay-linux-*.tar.gz > SHA256SUMS
-          cat SHA256SUMS
+          sh scripts/package-release.sh
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
@@ -118,13 +90,13 @@ EOF
         id: release_check
         run: |
           if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == refs/tags/* ]]; then
-            echo "should_release=true" >> $GITHUB_OUTPUT
-            echo "tag=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.publish_release }}" == "true" ]]; then
-            echo "should_release=true" >> $GITHUB_OUTPUT
-            echo "tag=${{ github.event.inputs.tag_name }}" >> $GITHUB_OUTPUT
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "tag=${{ github.event.inputs.tag_name }}" >> "$GITHUB_OUTPUT"
           else
-            echo "should_release=false" >> $GITHUB_OUTPUT
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Publish GitHub Release
